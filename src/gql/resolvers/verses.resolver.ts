@@ -103,7 +103,7 @@ export const versesResolver: Resolvers<{ request: NextRequest; ip: string }> = {
         })
         .catch(() => {
           rateLimitCache.set(clientIp, now)
-          throw new Error("Uses limit reached try again shortly")
+          throw new Error("User limit reached. Try again shortly.")
         })
 
       const text = result.response.text()
