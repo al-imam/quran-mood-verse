@@ -63,7 +63,7 @@ export const versesResolver: Resolvers<{ request: NextRequest; ip: string }> = {
         )
       }
       // Immediately set the ip's request in the cache
-      // Otherwise the user can make tons of simultanious request
+      // Otherwise the user can make tons of simultaneous request
       rateLimitCache.set(clientIp, now)
 
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
