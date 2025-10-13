@@ -62,6 +62,9 @@ export const versesResolver: Resolvers<{ request: NextRequest; ip: string }> = {
           `Rate limit exceeded wait ${remainingTime} seconds before making another request.`
         )
       }
+      // Immediately set the ip's request in the cache
+      // Otherwise the user can make tons of simultanious request
+      rateLimitCache.set(clientIp, now)
 
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
       const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash-lite" })
@@ -102,7 +105,6 @@ export const versesResolver: Resolvers<{ request: NextRequest; ip: string }> = {
           },
         })
         .catch(() => {
-          rateLimitCache.set(clientIp, now)
           throw new Error("Uses limit reached try again shortly")
         })
 
@@ -163,7 +165,6 @@ export const versesResolver: Resolvers<{ request: NextRequest; ip: string }> = {
       if (verses.length === 0) throw new Error("No verses could be fetched for this mood")
 
       const finalResult = { verses, mood: moodLabel.trim() }
-      rateLimitCache.set(clientIp, now)
 
       return finalResult
     },
