@@ -1,7 +1,5 @@
 "use client"
 
-/* eslint-disable max-lines */
-
 import { GlowingEdge } from "@/components/shared/glowing-edge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -15,7 +13,7 @@ import { GET_VERSES_BY_MOOD } from "@/gql/queries/verses.query"
 import { cn } from "@/lib/utils"
 import { useMoodStore, type Verse } from "@/stores/mood-store"
 import { useScriptStore } from "@/stores/script-store"
-import { useLazyQuery } from "@apollo/client"
+import { useLazyQuery } from "@apollo/client/react"
 import { ArrowUp, Loader2, Sparkles, SquareArrowOutUpRight } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import { Fragment } from "react"
@@ -49,9 +47,7 @@ export function QuranMoodExplorer() {
     store.setSubmitError(null)
 
     try {
-      const { data, errors } = await getVerses({ variables: { mood } })
-      const error = errors ? errors[0]! : undefined
-
+      const { data, error } = await getVerses({ variables: { mood } })
       if (error) {
         return store.setSubmitError(error.message || t("errors.fetching-verses"))
       }
