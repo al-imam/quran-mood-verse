@@ -59,7 +59,7 @@ bun.lockb
 
 # Ignore all package manager lock files
 package-lock.json
-yarn.lock
+
 
 # Ignore all artifacts
 /src/gql/artifacts

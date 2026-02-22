@@ -17,10 +17,10 @@
     }
   },
   "dependencies": {
-    "@apollo/client": "^4.0.7",
+    "@apollo/client": "3.14.0",
     "@apollo/client-integration-nextjs": "^0.12.3",
     "@apollo/server": "^5.0.0",
-    "@as-integrations/next": "^4.0.0",
+    "@as-integrations/next": "^4.1.0",
     "@google/generative-ai": "^0.24.1",
     "@graphql-tools/schema": "^10.0.25",
     "@graphql-tools/utils": "^10.9.1",
@@ -39,7 +39,7 @@
     "graphql-tag": "^2.12.6",
     "graphql-tools": "^9.0.20",
     "immer": "^10.1.3",
-    "lru-cache": "^11.2.2",
+    "lru-cache": "^11.2.6",
     "lucide-react": "^0.475.0",
     "motion": "^12.23.22",
     "next": "^16.1.6",
