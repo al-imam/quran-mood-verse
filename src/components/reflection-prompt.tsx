@@ -1,9 +1,10 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuthStore } from "@/stores/auth-store"
 import { useMoodStore } from "@/stores/mood-store"
-import { ArrowUp, Loader2 } from "lucide-react"
+import { ArrowUp, HelpCircle, Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -75,26 +76,38 @@ export function ReflectionPrompt() {
   }
 
   return (
-    <div className="my-8">
-      <div className="mb-4 text-center">
-        <p className="text-muted-foreground text-sm">{t("reflection.based-on-verses")}</p>
-        <p className="text-foreground mt-2 text-lg font-medium">{t("reflection.question")}</p>
-      </div>
-
+    <Card className="border-primary/20 bg-muted/30 mb-4 p-3 pt-2 md:mb-8 md:p-6 md:pt-5">
       {showReflectionInput ? (
         <ReflectionInput verses={savedVerses} onClose={() => setShowReflectionInput(false)} />
       ) : (
-        <div className="text-center">
-          <Button
-            onClick={handleAddReflection}
-            variant="outline"
-            className="border-primary/20 hover:border-primary hover:bg-primary/5 hover:text-primary gap-2 px-6 py-3 transition-all duration-200"
-          >
-            <ArrowUp className="h-4 w-4" />
-            {t("reflection.add-reflection")}
-          </Button>
-        </div>
+        <>
+          <CardHeader className="pb-4 text-center">
+            <div className="mb-2 flex items-center justify-center gap-2">
+              <CardTitle className="text-lg">{t("reflection.card-title")}</CardTitle>
+              <a
+                href="https://quranreflect.com/faq"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="FAQ"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </a>
+            </div>
+            <p className="text-muted-foreground text-sm">{t("reflection.question")}</p>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button
+              onClick={handleAddReflection}
+              variant="outline"
+              className="border-primary/20 hover:border-primary hover:bg-primary/5 hover:text-primary gap-2 px-6 py-3 transition-all duration-200"
+            >
+              <ArrowUp className="h-4 w-4" />
+              {t("reflection.add-reflection")}
+            </Button>
+          </CardContent>
+        </>
       )}
-    </div>
+    </Card>
   )
 }

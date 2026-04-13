@@ -199,8 +199,6 @@ export function QuranMoodExplorer() {
             ))}
           </div>
 
-          <ReflectionPrompt />
-
           <div className="my-4 text-center">
             <Button
               onClick={handleChangeMood}
@@ -211,6 +209,8 @@ export function QuranMoodExplorer() {
               {t("home.mood-changed")}
             </Button>
           </div>
+
+          <ReflectionPrompt />
         </div>
       )}
     </div>

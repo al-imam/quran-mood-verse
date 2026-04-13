@@ -16,13 +16,14 @@
   "reflection": {
     "title": "Share Your Reflection",
     "prompt": "Based on your situation and these verses, what comes to your mind? Write a public reflection to QR",
-    "question": "Based on your situation and these verses, what comes to your mind?",
+    "card-title": "Share Your Thoughts",
+    "question": "After reading these verses, would you like to share your reflections with the community?",
     "select-verse": "Select a verse to attach to your reflection",
     "placeholder": "Write your reflection here...",
     "submit": "Submit reflection",
     "submitting": "Submitting...",
     "close": "Close",
-    "add-reflection": "Add Reflection",
+    "add-reflection": "Share Reflection",
     "based-on-verses": "Based on these verses, what reflections come to mind?"
   },
   "footer": {
@@ -48,5 +49,6 @@
     "indopak": "Indopak",
     "uthmani": "Uthmani"
   },
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "logout": "Logout"
 }

@@ -2,7 +2,6 @@
 
 import { GlowingEdge } from "@/components/shared/glowing-edge"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { PromptInput, PromptInputActions, PromptInputTextarea } from "@/components/ui/prompt-input"
 import { useAuthStore } from "@/stores/auth-store"
 import { type Verse } from "@/stores/mood-store"
@@ -105,18 +104,18 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
   }
 
   return (
-    <Card className="border-primary/20 bg-muted/50 p-6">
-      <div className="mb-2 flex items-end justify-between">
-        <span className="text-muted-foreground text-sm font-medium">
+    <>
+      <div className="mb-2 flex items-end justify-between gap-4">
+        <span className="text-muted-foreground ml-[1.5px] text-sm font-medium">
           {t("reflection.select-verse")}
         </span>
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           onClick={handleLogout}
-          className="text-muted-foreground hover:text-destructive gap-2"
+          className="text-muted-foreground hover:text-destructive h-7 gap-2"
         >
-          Logout
+          {t("logout")}
         </Button>
       </div>
 
@@ -162,7 +161,7 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
                     value.trim().length >= 6 || "Reflection must be at least 6 characters long",
                 })}
                 placeholder={t("reflection.placeholder")}
-                className="placeholder:text-muted-foreground text-foreground min-h-[120px] resize-none"
+                className="placeholder:text-muted-foreground text-foreground min-h-[120px] resize-none px-2 py-2"
                 disabled={isSubmitting}
               />
 
@@ -209,6 +208,6 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
           </div>
         </form>
       </GlowingEdge>
-    </Card>
+    </>
   )
 }
