@@ -120,7 +120,7 @@ export function decodeJwt(token: string): Record<string, unknown> | null {
   }
 }
 
-export const OAUTH_SCOPES = "openid offline collection bookmark reading_session preference user"
+export const OAUTH_SCOPES = "openid post"
 
 export const COOKIE_CONFIG = {
   httpOnly: true,
