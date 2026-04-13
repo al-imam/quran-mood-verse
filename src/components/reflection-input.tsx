@@ -3,12 +3,13 @@
 import { GlowingEdge } from "@/components/shared/glowing-edge"
 import { Button } from "@/components/ui/button"
 import { PromptInput, PromptInputActions, PromptInputTextarea } from "@/components/ui/prompt-input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuthStore } from "@/stores/auth-store"
 import { type Verse } from "@/stores/mood-store"
 import { Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useEffect } from "react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 
 interface ReflectionInputProps {
@@ -31,6 +32,7 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
     setValue,
     watch,
     setError,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ReflectionFormData>({
     defaultValues: {
@@ -120,25 +122,37 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
       </div>
 
       <div className="mb-4">
-        <select
-          {...register("verseKey", {
+        <Controller
+          control={control}
+          name="verseKey"
+          rules={{
             required: "Please select a verse",
             pattern: {
               value: /^\d+:\d+$/,
               message: "Invalid verse format",
             },
-          })}
-          className="border-input bg-background ring-offset-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
-        >
-          {verses.map((verse) => (
-            <option
-              key={`${verse.surah.number}-${verse.number}`}
-              value={`${verse.surah.number}:${verse.number}`}
+          }}
+          render={({ field }) => (
+            <Select
+              value={field.value}
+              onValueChange={field.onChange}
             >
-              {verse.surah.number}:{verse.number}
-            </option>
-          ))}
-        </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a verse" />
+              </SelectTrigger>
+              <SelectContent>
+                {verses.map((verse) => (
+                  <SelectItem
+                    key={`${verse.surah.number}-${verse.number}`}
+                    value={`${verse.surah.number}:${verse.number}`}
+                  >
+                    {verse.surah.number}:{verse.number}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
         {errors.verseKey && (
           <p className="text-destructive pt-1.5 text-xs">{errors.verseKey?.message}</p>
         )}

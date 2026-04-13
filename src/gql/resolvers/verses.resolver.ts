@@ -1,6 +1,8 @@
 import { env } from "@/env"
 import { Resolvers } from "@/gql/artifacts/resolvers"
 import { quranSDK } from "@/lib/quran.foundation"
+import { toKebabCase } from "@/utils/casing"
+import { getFallbackVerses } from "@/utils/fallback"
 import { createHash } from "@/utils/hash"
 import { calculateTTL } from "@/utils/ttl"
 import { GoogleGenerativeAI } from "@google/generative-ai"
@@ -164,6 +166,28 @@ export const versesResolver: Resolvers<{ request: NextRequest; ip: string }> = {
       rateLimitCache.set(clientIp, now)
 
       const results = await getVerseKeys(mood).catch(() => {
+        /**
+         * Fallback mechanism: Returns preset verses ONLY for predefined mood presets when AI generation is unavailable.
+         *
+         * This is NOT the primary verse generation method. It serves as a backup solely for the
+         * curated mood presets available in the UI (grateful, sad, seeking-forgiveness, anxious, angry).
+         *
+         * When AI generation fails due to:
+         * - API quota limits or billing issues
+         * - Network failures or timeouts
+         * - Service unavailability
+         *
+         * This ensures users clicking preset buttons still receive relevant, hand-picked Quranic verses.
+         *
+         * The mood input is normalized to kebab-case and matched against predefined verse mappings.
+         * If no preset verses exist for the given mood, the error is propagated.
+         *
+         * Custom mood inputs that fail AI generation will NOT trigger fallback - only the 5 predefined presets.
+         *
+         * @see {@link ../constants/fallback-verses.ts} for the complete list of preset moods and their verses
+         */
+        const fallbackVerseKeys = getFallbackVerses(mood)
+        if (fallbackVerseKeys) return { verseKeys: fallbackVerseKeys, mood: toKebabCase(mood) }
         throw new Error("Usage limit reached. Try again shortly.")
       })
 

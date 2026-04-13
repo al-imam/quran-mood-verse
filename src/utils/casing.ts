@@ -41,3 +41,13 @@ export function toCapitalizeCase(str = "") {
   const normalized = toBaseCase(String(str)).toLowerCase()
   return normalized.charAt(0).toUpperCase() + normalized.slice(1)
 }
+
+export function toKebabCase(str = "") {
+  return String(str)
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
