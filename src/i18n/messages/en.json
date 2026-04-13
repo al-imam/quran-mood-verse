@@ -13,6 +13,18 @@
     "verses-for-soul": "Verses for your soul",
     "based-on-mood": "Based on your mood: {mood}"
   },
+  "reflection": {
+    "title": "Share Your Reflection",
+    "prompt": "Based on your situation and these verses, what comes to your mind? Write a public reflection to QR",
+    "question": "Based on your situation and these verses, what comes to your mind?",
+    "select-verse": "Select a verse to attach to your reflection",
+    "placeholder": "Write your reflection here...",
+    "submit": "Submit reflection",
+    "submitting": "Submitting...",
+    "close": "Close",
+    "add-reflection": "Add Reflection",
+    "based-on-verses": "Based on these verses, what reflections come to mind?"
+  },
   "footer": {
     "tagline": "Find verses that speak to your soul"
   },

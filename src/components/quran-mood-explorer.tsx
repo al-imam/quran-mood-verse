@@ -1,5 +1,6 @@
 "use client"
 
+import { ReflectionPrompt } from "@/components/reflection-prompt"
 import { GlowingEdge } from "@/components/shared/glowing-edge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -36,21 +37,16 @@ export function QuranMoodExplorer() {
     { label: t("moods.angry"), key: "Angry", emoji: "😡" },
   ]
 
-  const [getVerses, { loading }] = useLazyQuery(GET_VERSES_BY_MOOD, {
-    errorPolicy: "all",
-  })
+  const [getVerses, { loading }] = useLazyQuery(GET_VERSES_BY_MOOD, { errorPolicy: "all" })
 
   async function handleSubmit(moodInput: string) {
     const mood = moodInput.trim()
     if (!mood) return
-
     store.setSubmitError(null)
 
     try {
       const { data, error } = await getVerses({ variables: { mood } })
-      if (error) {
-        return store.setSubmitError(error.message || t("errors.fetching-verses"))
-      }
+      if (error) return store.setSubmitError(error.message || t("errors.fetching-verses"))
 
       if (data?.getVersesByMood?.verses && data.getVersesByMood.verses.length > 0) {
         store.updateVersesResult(data.getVersesByMood.verses, data.getVersesByMood.mood)
@@ -202,6 +198,8 @@ export function QuranMoodExplorer() {
               </Fragment>
             ))}
           </div>
+
+          <ReflectionPrompt />
 
           <div className="my-4 text-center">
             <Button

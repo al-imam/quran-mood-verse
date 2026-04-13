@@ -1,13 +1,20 @@
-/* eslint-disable max-lines */
+/* eslint-disable max-lines, react-func/max-lines-per-function, @typescript-eslint/no-namespace */
 
 import { env } from "@/env"
 import { joinUrl } from "@/lib/url"
 import axios from "axios"
 import { LRUCache } from "lru-cache"
+import { cookies } from "next/headers"
 import z from "zod"
 
-const ACCESS_TOKEN_URL = env.QURAN_FOUNDATION_OAUTH_URL!
-const API_URL = env.QURAN_FOUNDATION_API_URL!
+const OAUTH_BASE_URL = env.QURAN_FOUNDATION_OAUTH_BASE_URL
+const API_BASE_URL = env.QURAN_FOUNDATION_API_BASE_URL
+
+const ACCESS_TOKEN_URL = joinUrl(OAUTH_BASE_URL, "oauth2", "token")
+const OAUTH_AUTH_URL = joinUrl(OAUTH_BASE_URL, "oauth2", "auth")
+const OAUTH_LOGOUT_URL = joinUrl(OAUTH_BASE_URL, "oauth2", "sessions", "logout")
+const API_URL = joinUrl(API_BASE_URL, "content", "api", "v4")
+const POSTS_API_URL = joinUrl(API_BASE_URL, "quran-reflect", "v1", "posts")
 
 export type VerseLevelField =
   | "chapter_id"
@@ -84,7 +91,44 @@ const AccessResponseSchema = z.object({
   scope: z.string(),
 })
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
+export function generateState(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(32)))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+}
+
+export function generateCodeVerifier(): string {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  return btoa(String.fromCharCode(...array))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "")
+}
+
+export function decodeJwt(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".")
+    if (parts.length !== 3) return null
+
+    const payload = parts[1]
+    const paddedPayload = payload + "=".repeat((4 - (payload.length % 4)) % 4)
+    const decoded = Buffer.from(paddedPayload, "base64").toString("utf-8")
+    return JSON.parse(decoded)
+  } catch {
+    return null
+  }
+}
+
+export const OAUTH_SCOPES = "openid offline collection bookmark reading_session preference user"
+
+export const COOKIE_CONFIG = {
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+}
+
 namespace QuranFoundation {
   export interface Translation {
     resource_id: number
@@ -180,15 +224,17 @@ export class QFSDK {
 
   private clientId: string
   private clientSecret: string
+  private redirectUri: string
 
   private accessToken: string | null = null
   private tokenExpiry: number | null = null
 
   private constructor({ clientId, clientSecret }: { clientId: string; clientSecret: string }) {
-    if (QFSDK.instance) throw new Error("Use QuranFoundation.getInstance() instead of new.")
+    if (QFSDK.instance) throw new Error("Use QFSDK.getInstance() instead of new.")
 
     this.clientId = clientId
     this.clientSecret = clientSecret
+    this.redirectUri = joinUrl(env.NEXT_PUBLIC_ORIGIN, "api", "oauth", "callback")
   }
 
   public static getInstance(config: { clientId: string; clientSecret: string }) {
@@ -199,12 +245,147 @@ export class QFSDK {
     return QFSDK.instance
   }
 
-  public async getAccessToken() {
-    if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
-      return this.accessToken
-    }
+  public async generateAuthorizationUrl(): Promise<string> {
+    const state = generateState()
+    const codeVerifier = generateCodeVerifier()
 
-    return this.fetchAccessToken()
+    const encoder = new TextEncoder()
+    const data = encoder.encode(codeVerifier)
+    const digest = await crypto.subtle.digest("SHA-256", data)
+    const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "")
+
+    const cookieStore = await cookies()
+    cookieStore.set("oauth_state", state, {
+      ...COOKIE_CONFIG,
+      maxAge: 60 * 10,
+    })
+
+    cookieStore.set("oauth_code_verifier", codeVerifier, {
+      ...COOKIE_CONFIG,
+      maxAge: 60 * 10,
+    })
+
+    const authUrl = new URL(OAUTH_AUTH_URL)
+    authUrl.searchParams.set("client_id", this.clientId)
+    authUrl.searchParams.set("redirect_uri", this.redirectUri)
+    authUrl.searchParams.set("response_type", "code")
+    authUrl.searchParams.set("scope", OAUTH_SCOPES)
+    authUrl.searchParams.set("state", state)
+    authUrl.searchParams.set("code_challenge", codeChallenge)
+    authUrl.searchParams.set("code_challenge_method", "S256")
+
+    return authUrl.toString()
+  }
+
+  public async exchangeCodeForTokens(
+    code: string,
+    state: string
+  ): Promise<{
+    access_token: string
+    refresh_token?: string
+    id_token?: string
+    token_type: string
+    expires_in?: number
+    expires_at?: number
+  } | null> {
+    const cookieStore = await cookies()
+    const storedState = cookieStore.get("oauth_state")?.value
+    const codeVerifier = cookieStore.get("oauth_code_verifier")?.value
+
+    if (!storedState || !codeVerifier || storedState !== state) return null
+
+    const credentials = `${this.clientId}:${this.clientSecret}`
+    const encodedCredentials = Buffer.from(credentials).toString("base64")
+
+    try {
+      const response = await axios.post(
+        ACCESS_TOKEN_URL,
+        new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: this.redirectUri,
+          code_verifier: codeVerifier,
+        }).toString(),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json",
+            Authorization: `Basic ${encodedCredentials}`,
+          },
+        }
+      )
+
+      const tokens = response.data
+
+      cookieStore.set("oauth_access_token", tokens.access_token, {
+        ...COOKIE_CONFIG,
+        maxAge: 60 * 60,
+      })
+
+      if (tokens.refresh_token) {
+        cookieStore.set("oauth_refresh_token", tokens.refresh_token, {
+          ...COOKIE_CONFIG,
+          maxAge: 60 * 60 * 24 * 30,
+        })
+      }
+
+      if (tokens.id_token) {
+        cookieStore.set("oauth_id_token", tokens.id_token, {
+          ...COOKIE_CONFIG,
+          maxAge: 60 * 60,
+        })
+      }
+
+      cookieStore.delete("oauth_state")
+      cookieStore.delete("oauth_code_verifier")
+
+      return tokens
+    } catch {
+      return null
+    }
+  }
+
+  public async getCurrentUser(): Promise<{ id: string; name: string; email: string } | null> {
+    const cookieStore = await cookies()
+    const accessToken = cookieStore.get("oauth_access_token")?.value
+    const idToken = cookieStore.get("oauth_id_token")?.value
+
+    if (!accessToken || !idToken) return null
+
+    const userData = decodeJwt(idToken)
+    if (!userData) return null
+
+    const combinedName = [userData.first_name, userData.last_name].filter(Boolean).join(" ")
+    const userName = combinedName || (userData.name as string) || "Unknown"
+
+    return { id: userData.sub as string, name: userName, email: userData.email as string }
+  }
+
+  public async logout(): Promise<string> {
+    const cookieStore = await cookies()
+
+    const idToken = cookieStore.get("oauth_id_token")?.value
+    cookieStore.delete("oauth_access_token")
+    cookieStore.delete("oauth_refresh_token")
+    cookieStore.delete("oauth_id_token")
+    cookieStore.delete("oauth_state")
+    cookieStore.delete("oauth_code_verifier")
+
+    const logoutUrl = new URL(OAUTH_LOGOUT_URL)
+    logoutUrl.searchParams.set("client_id", this.clientId)
+    // logoutUrl.searchParams.set("post_logout_redirect_uri", env.NEXT_PUBLIC_ORIGIN)
+    logoutUrl.searchParams.set("redirect_uri", env.NEXT_PUBLIC_ORIGIN)
+    if (idToken) logoutUrl.searchParams.set("id_token_hint", idToken)
+
+    return logoutUrl.toString()
+  }
+
+  public async getUserAccessToken(): Promise<string | null> {
+    const cookieStore = await cookies()
+    return cookieStore.get("oauth_access_token")?.value || null
   }
 
   private async fetchAccessToken() {
@@ -227,6 +408,14 @@ export class QFSDK {
     this.tokenExpiry = Date.now() + result.expires_in * 1000
 
     return this.accessToken
+  }
+
+  public async getAccessToken() {
+    if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+      return this.accessToken
+    }
+
+    return this.fetchAccessToken()
   }
 
   public async getTranslationResources() {
@@ -299,9 +488,44 @@ export class QFSDK {
 
     return response.data
   }
+
+  public async createReflection(reflectionText: string, verseKey: string): Promise<unknown> {
+    const accessToken = await this.getUserAccessToken()
+    if (!accessToken) throw new Error("Unauthorized - Please login first")
+
+    const [surahNumber, verseNumber] = verseKey.split(":")
+
+    const response = await axios.post(
+      POSTS_API_URL,
+      {
+        post: {
+          body: reflectionText,
+          draft: false,
+          roomPostStatus: 1, // 1 = Publicly, 0 = AsRoom, 2 = OnlyMembers
+          references: [
+            {
+              chapterId: parseInt(surahNumber, 10),
+              from: parseInt(verseNumber, 10),
+              to: parseInt(verseNumber, 10),
+            },
+          ],
+        },
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": accessToken,
+          "x-client-id": this.clientId,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    )
+
+    return response.data
+  }
 }
 
-export const quranSQK = QFSDK.getInstance({
+export const quranSDK = QFSDK.getInstance({
   clientId: env.QURAN_FOUNDATION_CLIENT_ID!,
   clientSecret: env.QURAN_FOUNDATION_CLIENT_SECRET!,
 })

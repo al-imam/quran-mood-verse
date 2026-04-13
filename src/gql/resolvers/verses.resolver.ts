@@ -1,6 +1,6 @@
 import { env } from "@/env"
 import { Resolvers } from "@/gql/artifacts/resolvers"
-import { quranSQK } from "@/lib/quran.foundation"
+import { quranSDK } from "@/lib/quran.foundation"
 import { createHash } from "@/utils/hash"
 import { calculateTTL } from "@/utils/ttl"
 import { GoogleGenerativeAI } from "@google/generative-ai"
@@ -168,7 +168,7 @@ export const versesResolver: Resolvers<{ request: NextRequest; ip: string }> = {
       })
 
       const versePromises = results.verseKeys.map(async (key) => {
-        const verse = await quranSQK.getVerse(key, {
+        const verse = await quranSDK.getVerse(key, {
           fields: {
             text_uthmani: true,
             chapter_id: true,
