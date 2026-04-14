@@ -14,17 +14,14 @@
     "based-on-mood": "Based on your mood: {mood}"
   },
   "reflection": {
-    "title": "Share Your Reflection",
     "prompt": "How do these verses speak to your heart? Share your meaningful thoughts and inspire others in the community.",
     "card-title": "Share Your Thoughts",
-    "question": "After reading these verses, would you like to share your reflections with the community?",
     "select-verse": "Select a verse to attach to your reflection",
     "placeholder": "Write your reflection here...",
     "submit": "Submit reflection",
     "submitting": "Submitting...",
     "close": "Close",
-    "add-reflection": "Share Reflection",
-    "based-on-verses": "Based on these verses, what reflections come to mind?"
+    "add-reflection": "Share Reflection"
   },
   "footer": {
     "tagline": "Find verses that speak to your soul"

@@ -1,9 +1,16 @@
+/* eslint-disable max-lines, react-func/max-lines-per-function */
 "use client"
 
 import { GlowingEdge } from "@/components/shared/glowing-edge"
 import { Button } from "@/components/ui/button"
 import { PromptInput, PromptInputActions, PromptInputTextarea } from "@/components/ui/prompt-input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useAuthStore } from "@/stores/auth-store"
 import { type Verse } from "@/stores/mood-store"
 import { Loader2 } from "lucide-react"
@@ -80,6 +87,12 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
       const result = await response.json()
 
       if (!response.ok) {
+        if (response.status === 401) {
+          logout()
+          toast.error("Your session has expired. Please login again.")
+          return (window.location.href = "/api/oauth/auth")
+        }
+
         if (result.error === "Validation Error" && result.errors) {
           return result.errors.forEach((err: { field: string; message: string }) =>
             setError(err.field as "verseKey", { message: err.message })
@@ -92,7 +105,13 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
       toast.success("Reflection submitted successfully!")
       setValue("reflectionText", "")
       onClose?.()
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("Unauthorized")) {
+        logout()
+        toast.error("Your session has expired. Please login again.")
+        return (window.location.href = "/api/oauth/auth")
+      }
+
       toast.error("Failed to submit reflection. Please try again.")
     }
   }
@@ -133,10 +152,7 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
             },
           }}
           render={({ field }) => (
-            <Select
-              value={field.value}
-              onValueChange={field.onChange}
-            >
+            <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a verse" />
               </SelectTrigger>

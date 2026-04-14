@@ -12,7 +12,7 @@ import { ReflectionInput } from "./reflection-input"
 
 export function ReflectionPrompt() {
   const t = useTranslations()
-  const { isAuthenticated, isLoading, setUser, setLoading } = useAuthStore()
+  const { isAuthenticated, isLoading, setUser, setLoading, logout } = useAuthStore()
   const { savedVerses } = useMoodStore()
   const [showReflectionInput, setShowReflectionInput] = useState(false)
 
@@ -22,9 +22,9 @@ export function ReflectionPrompt() {
         const response = await fetch("/api/oauth/user")
         if (response.ok) {
           const data = await response.json()
-          if (data.user) {
-            setUser(data.user)
-          }
+          if (data.user) setUser(data.user)
+        } else if (response.status === 401) {
+          logout()
         }
       } catch (error) {
         console.error("Error checking auth status:", error)
@@ -34,7 +34,7 @@ export function ReflectionPrompt() {
     }
 
     void checkAuth()
-  }, [setUser, setLoading])
+  }, [setUser, setLoading, logout])
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -94,7 +94,8 @@ export function ReflectionPrompt() {
                 <HelpCircle className="h-5 w-5" />
               </a>
             </div>
-            <p className="text-muted-foreground text-sm">{t("reflection.question")}</p>
+
+            <p className="text-muted-foreground text-sm">{t("reflection.prompt")}</p>
           </CardHeader>
           <CardContent className="text-center">
             <Button
