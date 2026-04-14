@@ -120,7 +120,7 @@ export function decodeJwt(token: string): Record<string, unknown> | null {
   }
 }
 
-export const OAUTH_SCOPES = "openid post"
+export const OAUTH_SCOPES = "openid post offline_access"
 
 export const COOKIE_CONFIG = {
   httpOnly: true,
@@ -245,6 +245,16 @@ export class QFSDK {
     return QFSDK.instance
   }
 
+  private getTokenMaxAge(token: string, fallbackMaxAge: number): number {
+    const tokenData = decodeJwt(token)
+
+    if (tokenData && typeof tokenData.exp === "number" && typeof tokenData.iat === "number") {
+      return tokenData.exp - tokenData.iat
+    }
+
+    return fallbackMaxAge
+  }
+
   public async generateAuthorizationUrl(): Promise<string> {
     const state = generateState()
     const codeVerifier = generateCodeVerifier()
@@ -322,7 +332,7 @@ export class QFSDK {
 
       cookieStore.set("oauth_access_token", tokens.access_token, {
         ...COOKIE_CONFIG,
-        maxAge: 60 * 60,
+        maxAge: this.getTokenMaxAge(tokens.access_token, 60 * 60),
       })
 
       if (tokens.refresh_token) {
@@ -335,7 +345,7 @@ export class QFSDK {
       if (tokens.id_token) {
         cookieStore.set("oauth_id_token", tokens.id_token, {
           ...COOKIE_CONFIG,
-          maxAge: 60 * 60,
+          maxAge: this.getTokenMaxAge(tokens.id_token, 60 * 60),
         })
       }
 
@@ -383,9 +393,62 @@ export class QFSDK {
     return logoutUrl.toString()
   }
 
-  public async getUserAccessToken(): Promise<string | null> {
-    const cookieStore = await cookies()
-    return cookieStore.get("oauth_access_token")?.value || null
+  private async refreshAccessToken(refreshToken: string): Promise<{
+    access_token: string
+    refresh_token?: string
+    id_token?: string
+    expires_in?: number
+  } | null> {
+    const credentials = `${this.clientId}:${this.clientSecret}`
+    const encodedCredentials = Buffer.from(credentials).toString("base64")
+
+    try {
+      const response = await axios.post(
+        ACCESS_TOKEN_URL,
+        new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: refreshToken,
+        }).toString(),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json",
+            Authorization: `Basic ${encodedCredentials}`,
+          },
+        }
+      )
+
+      const tokens = response.data
+
+      const cookieStore = await cookies()
+
+      cookieStore.set("oauth_access_token", tokens.access_token, {
+        ...COOKIE_CONFIG,
+        maxAge: this.getTokenMaxAge(tokens.access_token, 60 * 60),
+      })
+
+      if (tokens.refresh_token) {
+        cookieStore.set("oauth_refresh_token", tokens.refresh_token, {
+          ...COOKIE_CONFIG,
+          maxAge: 60 * 60 * 24 * 30,
+        })
+      }
+
+      if (tokens.id_token) {
+        cookieStore.set("oauth_id_token", tokens.id_token, {
+          ...COOKIE_CONFIG,
+          maxAge: this.getTokenMaxAge(tokens.id_token, 60 * 60),
+        })
+      }
+
+      return tokens
+    } catch {
+      const cookieStore = await cookies()
+      cookieStore.delete("oauth_access_token")
+      cookieStore.delete("oauth_refresh_token")
+      cookieStore.delete("oauth_id_token")
+      return null
+    }
   }
 
   private async fetchAccessToken() {
@@ -490,7 +553,7 @@ export class QFSDK {
   }
 
   public async createReflection(reflectionText: string, verseKey: string): Promise<unknown> {
-    const accessToken = await this.getUserAccessToken()
+    const accessToken = await this.getValidUserAccessToken()
     if (!accessToken) throw new Error("Unauthorized - Please login first")
 
     const [surahNumber, verseNumber] = verseKey.split(":")
@@ -522,6 +585,37 @@ export class QFSDK {
     )
 
     return response.data
+  }
+
+  private async getValidUserAccessToken(): Promise<string | null> {
+    const cookieStore = await cookies()
+    const accessToken = cookieStore.get("oauth_access_token")?.value
+    const refreshToken = cookieStore.get("oauth_refresh_token")?.value
+
+    if (!accessToken && !refreshToken) return null
+
+    if (accessToken) {
+      const jwtData = decodeJwt(accessToken)
+      if (jwtData && typeof jwtData.exp === "number") {
+        const expiryTime = jwtData.exp * 1000
+        const currentTime = Date.now()
+        const timeUntilExpiry = expiryTime - currentTime
+
+        if (timeUntilExpiry < 60000 && refreshToken) {
+          const refreshed = await this.refreshAccessToken(refreshToken)
+          return refreshed?.access_token || accessToken
+        }
+      }
+
+      return accessToken
+    }
+
+    if (refreshToken) {
+      const refreshed = await this.refreshAccessToken(refreshToken)
+      return refreshed?.access_token || null
+    }
+
+    return null
   }
 }
 
