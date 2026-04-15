@@ -1,4 +1,5 @@
 /* eslint-disable max-lines, react-func/max-lines-per-function */
+
 "use client"
 
 import { GlowingEdge } from "@/components/shared/glowing-edge"
@@ -105,6 +106,16 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
       toast.success("Reflection submitted successfully!")
       setValue("reflectionText", "")
       onClose?.()
+
+      const postId = result?.post?.id
+
+      if (postId) {
+        window.open(
+          `https://quranreflect.com/posts/${postId}`,
+          "_blank",
+          "width=800,height=600,top=100,left=200,resizable=yes,scrollbars=yes"
+        )
+      }
     } catch (error) {
       if (error instanceof Error && error.message.includes("Unauthorized")) {
         logout()

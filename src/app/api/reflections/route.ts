@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       validationResult.data.verseKey
     )
 
-    return NextResponse.json({ message: "Reflection Created Successfully", post }, { status: 201 })
+    return NextResponse.json(post, { status: 201 })
   } catch (error) {
     if (error instanceof Error && error.message.includes("Unauthorized")) {
       return NextResponse.json({ error: "Unauthorized - Please Login First" }, { status: 401 })
