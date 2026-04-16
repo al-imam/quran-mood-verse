@@ -107,7 +107,7 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
       setValue("reflectionText", "")
       onClose?.()
 
-      const postId = result?.post?.id
+      const postId = result?.post?.id ?? result?.data?.id
 
       if (postId) {
         window.open(
