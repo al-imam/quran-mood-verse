@@ -587,6 +587,42 @@ export class QFSDK {
     return response.data
   }
 
+  public async getUserReflections(
+    page = 1,
+    limit = 20
+  ): Promise<{ data: unknown[]; total: number }> {
+    const accessToken = await this.getValidUserAccessToken()
+    if (!accessToken) throw new Error("Unauthorized - Please login first")
+
+    const response = await axios.get(`${POSTS_API_URL}/my-posts`, {
+      params: { page, limit, tab: "my_reflections" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-auth-token": accessToken,
+        "x-client-id": this.clientId,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    return response.data
+  }
+
+  public async deleteReflection(postId: string): Promise<{ success: boolean }> {
+    const accessToken = await this.getValidUserAccessToken()
+    if (!accessToken) throw new Error("Unauthorized - Please login first")
+
+    const response = await axios.delete(`${POSTS_API_URL}/${postId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        "x-auth-token": accessToken,
+        "x-client-id": this.clientId,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    return response.data
+  }
+
   private async getValidUserAccessToken(): Promise<string | null> {
     const cookieStore = await cookies()
     const accessToken = cookieStore.get("oauth_access_token")?.value
@@ -601,13 +637,20 @@ export class QFSDK {
         const currentTime = Date.now()
         const timeUntilExpiry = expiryTime - currentTime
 
-        if (timeUntilExpiry < 60000 && refreshToken) {
-          const refreshed = await this.refreshAccessToken(refreshToken)
-          return refreshed?.access_token || accessToken
+        if (timeUntilExpiry < 300000) {
+          if (refreshToken) {
+            const refreshed = await this.refreshAccessToken(refreshToken)
+            if (refreshed?.access_token) return refreshed.access_token
+            if (timeUntilExpiry < 0) return null
+          }
+
+          if (timeUntilExpiry < 0) return null
         }
+
+        return accessToken
       }
 
-      return accessToken
+      return null
     }
 
     if (refreshToken) {

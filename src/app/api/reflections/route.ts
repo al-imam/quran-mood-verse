@@ -7,6 +7,24 @@ const reflectionSchema = z.object({
   verseKey: z.string().regex(/^\d+:\d+$/, "Verse key must be in format `Surah:Verse`"),
 })
 
+export async function GET(req: NextRequest) {
+  try {
+    const searchParams = req.nextUrl.searchParams
+    const page = parseInt(searchParams.get("page") || "1", 10)
+    const limit = parseInt(searchParams.get("limit") || "20", 10)
+
+    const reflections = await quranSDK.getUserReflections(page, limit)
+
+    return NextResponse.json(reflections, { status: 200 })
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Unauthorized")) {
+      return NextResponse.json({ error: "Unauthorized - Please Login First" }, { status: 401 })
+    }
+
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()

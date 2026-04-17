@@ -100,22 +100,16 @@ export function ReflectionInput({ verses, onClose }: ReflectionInputProps) {
           )
         }
 
-        throw new Error(result.error || "Failed to submit reflection")
+        throw new Error("Failed to submit Reflection")
       }
 
       toast.success("Reflection submitted successfully!")
       setValue("reflectionText", "")
       onClose?.()
 
+      // Docs says return {post: {}} but really returns {data: {}} ???
       const postId = result?.post?.id ?? result?.data?.id
-
-      if (postId) {
-        window.open(
-          `https://quranreflect.com/posts/${postId}`,
-          "_blank",
-          "width=800,height=600,top=100,left=200,resizable=yes,scrollbars=yes"
-        )
-      }
+      if (postId) window.location.href = `https://quranreflect.com/posts/${postId}`
     } catch (error) {
       if (error instanceof Error && error.message.includes("Unauthorized")) {
         logout()
